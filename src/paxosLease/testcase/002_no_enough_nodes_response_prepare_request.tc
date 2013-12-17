@@ -1,0 +1,16 @@
+no enough nodes
+	proposer should be timeout on preparing, and keep retry
+----------
+
+create 3 nodes
+node 2 is offline
+node 3 is offline
+node 1 propose
+sleep 5
+assert log "node 1 preparing is timeout, restart prepraing"
+assert no log "node 1 become lease owner"
+
+print logs
+
+finally:
+stop all nodes

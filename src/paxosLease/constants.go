@@ -1,0 +1,6 @@
+package paxosLease
+
+const PROPOSE_ID_WIDTH_RESTART_COUNTER = 16
+const PROPOSE_ID_WIDTH_NODEID = 8
+const PREPARING_TIMEOUT = 3000 //ms
+const MAX_LEASED_TIME = 10000  //ms

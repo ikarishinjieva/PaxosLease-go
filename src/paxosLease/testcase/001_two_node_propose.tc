@@ -1,0 +1,12 @@
+two node propose, only one will get lease owner
+----------
+
+create 3 nodes
+node 1 propose
+node 2 propose
+assert log "node 1 become lease owner"
+sleep 3
+assert no log "node 2 become lease owner"
+
+finally:
+stop all nodes
