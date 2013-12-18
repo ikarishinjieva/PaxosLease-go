@@ -51,6 +51,12 @@ func (t *testcase) doAction(desc string) (err error) {
 		id, _ := strconv.Atoi(matches[1])
 		return t.nodeIsOffline(id)
 	})
+	err = t.descToAction(desc, "clear logs", err, func(matches []string) error {
+		return t.clearLogs()
+	})
+	err = t.descToAction(desc, "print test detail", err, func(matches []string) error {
+		return t.printTestDetail()
+	})
 	return err
 }
 
@@ -65,7 +71,7 @@ func (t *testcase) createNodes(count int) (err error) {
 
 func (t *testcase) stopAllNodes() (err error) {
 	for _, node := range t.nodes {
-		node.Stop()
+		go node.Stop()
 	}
 	return nil
 }
@@ -129,5 +135,15 @@ func (t *testcase) assertNoLog(log string) (err error) {
 
 func (t *testcase) nodeIsOffline(id int) (err error) {
 	debug.SetCond(fmt.Sprintf("node %v is offline", id))
+	return nil
+}
+
+func (t *testcase) clearLogs() (err error) {
+	t.logger.lines = make([]string, 0, 100)
+	return nil
+}
+
+func (t *testcase) printTestDetail() (err error) {
+	debug.SetCond("print test detail")
 	return nil
 }

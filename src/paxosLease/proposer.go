@@ -58,6 +58,10 @@ func (p *proposer) startPreparing() {
 	p.isLeaseOwner = false
 	p.proposeId = p.nextProposeId(p.proposeId)
 
+	p.broadcastPrepareRequest()
+}
+
+func (p *proposer) broadcastPrepareRequest() {
 	p.logger.Tracef("node %v: broadcast PrepareRequest : proposeId=%v", p.nodeIp, p.proposeId)
 	request := newMessage("PrepareRequest", p.nodeIp)
 	request.ProposeId = p.proposeId
@@ -75,7 +79,13 @@ func (p *proposer) nextProposeId(currentId uint64) uint64 {
 
 func (p *proposer) OnPrepareResponse(msg Message) {
 	p.logger.Tracef("node %v: got PrepareResponse from %v : proposeId=%v, acceptedProposeId=%v", p.nodeIp, msg.SourceIp, msg.ProposeId, msg.AcceptedProposeId)
-	if p.proposeId != msg.ProposeId || !p.preparing {
+
+	/*
+		(!p.preparing) is to prevent more node to enter preparing stage than necessary
+		HERE, don't use (!p.preparing) to let more node preparing,
+		in case that some node is down in preparing stage, which may make voting delay
+	*/
+	if p.proposeId != msg.ProposeId /*|| !p.preparing*/ {
 		p.logger.Tracef("node %v: ignore the PrepareResponse", p.nodeIp)
 		return
 	}
@@ -86,7 +96,10 @@ func (p *proposer) OnPrepareResponse(msg Message) {
 		return
 	}
 
-	//Start proposing
+	p.startProposing()
+}
+
+func (p *proposer) startProposing() {
 	p.logger.Tracef("node %v: got majority positive PrepareResponse", p.nodeIp)
 	p.preparingTimeout.stop()
 	p.preparing = false
@@ -94,7 +107,11 @@ func (p *proposer) OnPrepareResponse(msg Message) {
 	p.timeout = MAX_LEASED_TIME
 	p.proposingTimeout = newTick(p.onProposingTimeout).start(p.timeout)
 
-	p.logger.Tracef("node %v: send ProposeRequest : proposeId=%v,ProposeTimeout=%v", p.nodeIp, msg.ProposeId, p.timeout)
+	p.broadcastProposeRequest()
+}
+
+func (p *proposer) broadcastProposeRequest() {
+	p.logger.Tracef("node %v: send ProposeRequest : proposeId=%v,ProposeTimeout=%v", p.nodeIp, p.proposeId, p.timeout)
 	ret := newMessage("ProposeRequest", p.nodeIp)
 	ret.ProposeId = p.proposeId
 	ret.ProposeTimeout = p.timeout
@@ -111,8 +128,10 @@ func (p *proposer) OnProposeResponse(msg Message) {
 	if p.accpetNodeCount < p.minMajority {
 		return
 	}
+	p.becomeLeaseOwner()
+}
 
-	//Got propose
+func (p *proposer) becomeLeaseOwner() {
 	p.isLeaseOwner = true
 	p.preparing = false
 	p.proposing = false
@@ -125,7 +144,7 @@ func (p *proposer) onPreparingTimeout() {
 }
 
 func (p *proposer) onProposingTimeout() {
-	p.logger.Tracef("node %v proposing is timeout, restart prepraing", p.nodeIp)
+	p.logger.Tracef("node %v proposing is expired, restart prepraing", p.nodeIp)
 	p.startPreparing()
 }
 

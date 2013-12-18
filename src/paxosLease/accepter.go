@@ -28,12 +28,16 @@ func (a *accepter) OnPrepareRequest(msg Message) {
 		return
 	}
 	a.highestPromisedProposeId = msg.ProposeId
-	ret := newMessage("PrepareResponse", a.nodeIp)
-	ret.ProposeId = msg.ProposeId
-	ret.AcceptedProposeId = a.acceptedProposeId //maybe 0
-	a.logger.Tracef("node %v: send PrepareResponse : proposeId=%v, acceptedProposeId=%v", a.nodeIp, msg.ProposeId, msg.AcceptedProposeId)
-	a.writer.SendPaxosMsg(msg.SourceIp, ret)
+	a.sendPrepareResponse(msg.SourceIp, msg.ProposeId)
 	return
+}
+
+func (a *accepter) sendPrepareResponse(ip string, proposeId uint64) {
+	ret := newMessage("PrepareResponse", a.nodeIp)
+	ret.ProposeId = proposeId
+	ret.AcceptedProposeId = a.acceptedProposeId //maybe 0
+	a.logger.Tracef("node %v: send PrepareResponse : proposeId=%v, acceptedProposeId=%v", a.nodeIp, proposeId, a.acceptedProposeId)
+	a.writer.SendPaxosMsg(ip, ret)
 }
 
 func (a *accepter) OnProposeRequest(msg Message) {
@@ -44,11 +48,16 @@ func (a *accepter) OnProposeRequest(msg Message) {
 	a.acceptedProposeId = msg.ProposeId
 	a.acceptedProposeTimeout = msg.ProposeTimeout
 	a.proposingTimeout = newTick(a.onTimeout).start(a.acceptedProposeTimeout)
-	ret := newMessage("ProposeResponse", a.nodeIp)
-	ret.ProposeId = msg.ProposeId
-	a.logger.Tracef("node %v: send ProposeResponse : proposeId=%v", a.nodeIp, msg.ProposeId)
-	a.writer.SendPaxosMsg(msg.SourceIp, ret)
+
+	a.sendProposeResponse(msg.SourceIp, msg.ProposeId)
 	return
+}
+
+func (a *accepter) sendProposeResponse(ip string, proposeId uint64) {
+	ret := newMessage("ProposeResponse", a.nodeIp)
+	ret.ProposeId = proposeId
+	a.logger.Tracef("node %v: send ProposeResponse : proposeId=%v", a.nodeIp, proposeId)
+	a.writer.SendPaxosMsg(ip, ret)
 }
 
 func (a *accepter) onTimeout() {

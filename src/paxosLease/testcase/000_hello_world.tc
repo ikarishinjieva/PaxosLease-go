@@ -2,6 +2,5 @@ create 3 nodes
 node 1 propose
 assert log "node 1 become lease owner"
 
-
 finally:
 stop all nodes

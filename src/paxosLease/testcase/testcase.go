@@ -40,9 +40,9 @@ func (t *testcase) Start() (err error) {
 	or := false
 	var ors []chan error
 	for _, line := range strings.Split(string(bytes), "\n") {
-		// if debug.HasCond("print test detail") {
-		// 	debug.TmpLogf(line + "\n")
-		// }
+		if debug.HasCond("print test detail") {
+			debug.TmpLogf(line + "\n")
+		}
 		//OR:
 		if "OR:" == line {
 			ors = make([]chan error, 0)
@@ -98,5 +98,5 @@ func (t *testcase) introduceEnv(str string) string {
 }
 
 func (t *testcase) GetLogs() []string {
-	return t.logger.lines
+	return t.logger.all
 }

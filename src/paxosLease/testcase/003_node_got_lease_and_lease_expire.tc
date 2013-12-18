@@ -1,0 +1,14 @@
+node got lease, and then lease expire
+	a new voting round should be started automatically
+----------
+
+create 3 nodes
+node 1 propose
+assert log "node 1 become lease owner"
+clear logs
+sleep 10
+assert log "node 1 proposing is expired, restart prepraing"
+assert log "node 1 become lease owner"
+
+finally:
+stop all nodes
