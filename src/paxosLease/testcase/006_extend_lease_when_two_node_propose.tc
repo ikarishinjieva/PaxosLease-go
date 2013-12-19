@@ -1,0 +1,19 @@
+Extend lease when two node propose
+	1. Proposer A got lease, with proposeId = 1
+	2. Proposer B retry propose, and retry, ... , for example, proposeId = 5
+	3. Proposer A extend lease, with proposeId = 2, which definitely failed
+
+	The step 3 should not fail
+---
+
+create 3 nodes
+node 1 propose
+sleep 1
+node 2 propose
+assert log "node 1 become lease owner"
+clear logs
+assert log "node 1 extend its lease"
+assert log "node 1 become lease owner"
+
+finally:
+stop all nodes

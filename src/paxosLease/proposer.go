@@ -59,14 +59,13 @@ func (p *proposer) getNodeId() int {
 	return ret
 }
 
-func (p *proposer) startPreparing() {
+func (p *proposer) startPreparing(isExtendLease bool) {
 	p.logger.Tracef("node %v: start preparing", p.nodeIp)
 	p.stopTicks()
 	p.preparing = true
 	p.proposing = false
-	p.isLeaseOwner = false
 	p.preparingTimeout = newTick(p.onPreparingTimeout).start(PREPARING_TIMEOUT)
-	p.proposeId = p.nextProposeId(p.proposeId)
+	p.proposeId = p.nextProposeId(p.proposeId, isExtendLease)
 
 	p.broadcastPrepareRequest()
 }
@@ -94,8 +93,12 @@ func (p *proposer) broadcastPrepareRequest() {
 	p.writer.BroadcastPaxosMsg(request)
 }
 
-func (p *proposer) nextProposeId(currentId uint64) uint64 {
-	left := (currentId >> (PROPOSE_ID_WIDTH_NODEID + PROPOSE_ID_WIDTH_RESTART_COUNTER)) + 1
+func (p *proposer) nextProposeId(currentId uint64, isExtendLease bool) uint64 {
+	var delta uint64 = 1
+	if isExtendLease {
+		delta = uint64(math.Ceil(float64(MAX_LEASED_TIME) / float64(PREPARING_TIMEOUT)))
+	}
+	left := (currentId >> (PROPOSE_ID_WIDTH_NODEID + PROPOSE_ID_WIDTH_RESTART_COUNTER)) + delta
 	mid := p.restartCounter
 	right := p.getNodeId()
 	return uint64(left<<(PROPOSE_ID_WIDTH_NODEID+PROPOSE_ID_WIDTH_RESTART_COUNTER)) |
@@ -196,13 +199,15 @@ func (p *proposer) becomeLeaseOwner() {
 func (p *proposer) onPreparingTimeout() {
 	p.logger.Tracef("node %v preparing is timeout, restart prepraing", p.nodeIp)
 	p.leaseProposeId = 0
-	p.startPreparing()
+	p.isLeaseOwner = false
+	p.startPreparing(false)
 }
 
 func (p *proposer) onProposingTimeout() {
 	p.logger.Tracef("node %v proposing is expired, restart prepraing", p.nodeIp)
 	p.leaseProposeId = 0
-	p.startPreparing()
+	p.isLeaseOwner = false
+	p.startPreparing(false)
 }
 
 func (p *proposer) onExtendLeaseTimeout() {
@@ -210,11 +215,11 @@ func (p *proposer) onExtendLeaseTimeout() {
 		return
 	}
 	p.logger.Tracef("node %v extend its lease", p.nodeIp)
-	p.startPreparing()
+	p.startPreparing(true)
 }
 
 func (p *proposer) Start() {
-	p.startPreparing()
+	p.startPreparing(false)
 }
 
 func (p *proposer) Stop() {
