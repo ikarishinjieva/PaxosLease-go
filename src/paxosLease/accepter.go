@@ -39,7 +39,7 @@ func (a *accepter) sendPrepareReject(ip string, proposeId uint64) {
 	ret.ProposeId = proposeId
 	ret.AcceptedProposeId = a.acceptedProposeId2 //use acceptedProposeId2 because acceptedProposedId will be cleared after lease expired
 	a.logger.Tracef("node %v: send PrepareReject : proposeId=%v, acceptedProposeId=%v", a.nodeIp, ret.ProposeId, ret.AcceptedProposeId)
-	a.writer.SendPaxosMsg(ip, ret)
+	a.writer.SendPaxosMsg(a.nodeIp, ip, ret)
 }
 
 func (a *accepter) sendPrepareResponse(ip string, proposeId uint64) {
@@ -47,7 +47,7 @@ func (a *accepter) sendPrepareResponse(ip string, proposeId uint64) {
 	ret.ProposeId = proposeId
 	ret.AcceptedProposeId = a.acceptedProposeId //maybe 0
 	a.logger.Tracef("node %v: send PrepareResponse : proposeId=%v, acceptedProposeId=%v", a.nodeIp, ret.ProposeId, ret.AcceptedProposeId)
-	a.writer.SendPaxosMsg(ip, ret)
+	a.writer.SendPaxosMsg(a.nodeIp, ip, ret)
 }
 
 func (a *accepter) OnProposeRequest(msg Message) {
@@ -68,7 +68,7 @@ func (a *accepter) sendProposeResponse(ip string, proposeId uint64) {
 	ret := newMessage("ProposeResponse", a.nodeIp)
 	ret.ProposeId = proposeId
 	a.logger.Tracef("node %v: send ProposeResponse : proposeId=%v", a.nodeIp, proposeId)
-	a.writer.SendPaxosMsg(ip, ret)
+	a.writer.SendPaxosMsg(a.nodeIp, ip, ret)
 }
 
 func (a *accepter) onTimeout() {

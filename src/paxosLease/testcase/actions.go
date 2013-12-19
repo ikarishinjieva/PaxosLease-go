@@ -64,6 +64,9 @@ func (t *testcase) doAction(desc string) (err error) {
 		id, _ := strconv.Atoi(matches[1])
 		return t.disableLeaseExtension(id)
 	})
+	err = t.descToAction(desc, "network brain-split \\[([^\\]]+)\\] \\[([^\\]]+)\\]", err, func(matches []string) error {
+		return t.networkBrainSplit([]string{matches[1], matches[2]})
+	})
 	return err
 }
 
@@ -165,5 +168,20 @@ func (t *testcase) allAccepterHaveRunForAWhile() (err error) {
 
 func (t *testcase) disableLeaseExtension(id int) (err error) {
 	debug.SetCond(fmt.Sprintf("node %v disable lease extension", id))
+	return nil
+}
+
+func (t *testcase) networkBrainSplit(groups []string) (err error) {
+	debug.SetCond("network brain-split")
+	for _, group := range groups {
+		nodes := strings.Split(group, ",")
+		for _, a := range nodes {
+			for _, b := range nodes {
+				if a != b {
+					debug.SetCond(fmt.Sprintf("node %v can send msg to node %v", a, b))
+				}
+			}
+		}
+	}
 	return nil
 }

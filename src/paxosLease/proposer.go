@@ -90,7 +90,7 @@ func (p *proposer) broadcastPrepareRequest() {
 	p.openNodeCount = 0
 	request := newMessage("PrepareRequest", p.nodeIp)
 	request.ProposeId = p.proposeId
-	p.writer.BroadcastPaxosMsg(request)
+	p.writer.BroadcastPaxosMsg(p.nodeIp, request)
 }
 
 func (p *proposer) nextProposeId(currentId uint64, isExtendLease bool) uint64 {
@@ -162,7 +162,7 @@ func (p *proposer) broadcastProposeRequest() {
 	ret := newMessage("ProposeRequest", p.nodeIp)
 	ret.ProposeId = p.proposeId
 	ret.ProposeTimeout = p.timeout
-	p.writer.BroadcastPaxosMsg(ret)
+	p.writer.BroadcastPaxosMsg(p.nodeIp, ret)
 }
 
 func (p *proposer) OnProposeResponse(msg Message) {

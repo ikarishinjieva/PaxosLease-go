@@ -1,6 +1,6 @@
 package paxosLease
 
 type Writer interface {
-	SendPaxosMsg(ip string, data interface{}) error
-	BroadcastPaxosMsg(data interface{}) error
+	SendPaxosMsg(fromIp string, toIp string, data interface{}) error
+	BroadcastPaxosMsg(fromIp string, data interface{}) error
 }

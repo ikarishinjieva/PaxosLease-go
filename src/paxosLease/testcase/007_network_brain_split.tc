@@ -1,0 +1,21 @@
+network brain-split
+	the bigger subnet should vote for an owner
+	the smaller one should have no owner
+---
+
+create 5 nodes
+node 1 propose
+sleep 1
+node 3 propose
+
+assert log "node 1 become lease owner"
+
+network brain-split [1,2] [3,4,5]
+
+clear logs
+
+#wait lease expire
+sleep 10
+
+assert log "node 3 become lease owner"
+assert no log "node 1 become lease owner"
