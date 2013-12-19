@@ -14,6 +14,7 @@ func main() {
 	runTestcase("../002_no_enough_nodes_response_prepare_request.tc")
 	runTestcase("../003_node_got_lease_and_lease_expire.tc")
 	runTestcase("../004_extend_lease.tc")
+	runTestcase("../005_new_proposer_join_long-run_cluster.tc")
 }
 
 func runTestcase(path string) {

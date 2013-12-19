@@ -3,6 +3,7 @@ node got lease, and then lease expire
 ----------
 
 create 3 nodes
+node 1 disable lease extension
 node 1 propose
 assert log "node 1 become lease owner"
 clear logs

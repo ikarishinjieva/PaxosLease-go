@@ -1,7 +1,9 @@
 package paxosLease
 
 import (
+	"fmt"
 	"math"
+	"paxosLease/debug"
 	"regexp"
 	"strconv"
 	"time"
@@ -124,6 +126,24 @@ func (p *proposer) OnPrepareResponse(msg Message) {
 	p.startProposing()
 }
 
+func (p *proposer) OnPrepareReject(msg Message) {
+	<-p.prepareResponseMutex
+	defer func() { p.prepareResponseMutex <- true }()
+
+	p.logger.Tracef("node %v: got PrepareReject from %v : proposeId=%v, acceptedProposeId=%v", p.nodeIp, msg.SourceIp, msg.ProposeId, msg.AcceptedProposeId)
+
+	if p.proposeId != msg.ProposeId || !p.preparing {
+		p.logger.Tracef("node %v: ignore the PrepareReject", p.nodeIp)
+		return
+	}
+
+	bits := uint(PROPOSE_ID_WIDTH_NODEID + PROPOSE_ID_WIDTH_RESTART_COUNTER)
+	if (msg.AcceptedProposeId >> bits) > (p.proposeId >> bits) {
+		//p.proposeId = HIGH(msg.AcceptedProposeId) + LOW(p.proposeId)
+		p.proposeId = (p.proposeId - ((p.proposeId >> bits) << bits)) + ((msg.AcceptedProposeId >> bits) << bits)
+	}
+}
+
 func (p *proposer) startProposing() {
 	p.logger.Tracef("node %v: got majority positive PrepareResponse", p.nodeIp)
 	p.preparingTimeout.stop()
@@ -186,6 +206,9 @@ func (p *proposer) onProposingTimeout() {
 }
 
 func (p *proposer) onExtendLeaseTimeout() {
+	if debug.HasCond(fmt.Sprintf("node %v disable lease extension", p.nodeIp)) {
+		return
+	}
 	p.logger.Tracef("node %v extend its lease", p.nodeIp)
 	p.startPreparing()
 }

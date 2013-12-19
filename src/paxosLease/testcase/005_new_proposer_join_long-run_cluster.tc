@@ -1,0 +1,13 @@
+new proposer join long-run cluster
+	the new proposer should learn acceptedProposeId from reject message from acceptor in first voting,
+	and become lease owner in the second voting
+---
+
+create 3 nodes
+all accepters have run for a while
+node 1 propose
+sleep 6
+assert log "node 1 become lease owner"
+
+finally:
+stop all nodes

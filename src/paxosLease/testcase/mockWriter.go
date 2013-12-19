@@ -50,6 +50,8 @@ func (m *mockWriter) send(node *paxosLease.Node, msg paxosLease.Message) error {
 		go node.Proposer.OnPrepareResponse(msg)
 	case "ProposeResponse":
 		go node.Proposer.OnProposeResponse(msg)
+	case "PrepareReject":
+		go node.Proposer.OnPrepareReject(msg)
 	}
 	return nil
 }

@@ -57,6 +57,13 @@ func (t *testcase) doAction(desc string) (err error) {
 	err = t.descToAction(desc, "print test detail", err, func(matches []string) error {
 		return t.printTestDetail()
 	})
+	err = t.descToAction(desc, "all accepters have run for a while", err, func(matches []string) error {
+		return t.allAccepterHaveRunForAWhile()
+	})
+	err = t.descToAction(desc, "node (\\d) disable lease extension", err, func(matches []string) error {
+		id, _ := strconv.Atoi(matches[1])
+		return t.disableLeaseExtension(id)
+	})
 	return err
 }
 
@@ -145,5 +152,18 @@ func (t *testcase) clearLogs() (err error) {
 
 func (t *testcase) printTestDetail() (err error) {
 	debug.SetCond("print test detail")
+	return nil
+}
+
+func (t *testcase) allAccepterHaveRunForAWhile() (err error) {
+	for _, node := range t.nodes {
+		node.Accepter.SetAcceptedProposeIdForTest(10000 << (paxosLease.PROPOSE_ID_WIDTH_RESTART_COUNTER + paxosLease.PROPOSE_ID_WIDTH_NODEID))
+		node.Accepter.SetHighestPromisedProposeIdForTest(10001 << (paxosLease.PROPOSE_ID_WIDTH_RESTART_COUNTER + paxosLease.PROPOSE_ID_WIDTH_NODEID))
+	}
+	return nil
+}
+
+func (t *testcase) disableLeaseExtension(id int) (err error) {
+	debug.SetCond(fmt.Sprintf("node %v disable lease extension", id))
 	return nil
 }

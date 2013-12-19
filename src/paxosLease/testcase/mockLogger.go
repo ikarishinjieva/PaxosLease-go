@@ -20,7 +20,7 @@ func newMockLogger() *mockLogger {
 func (l *mockLogger) Tracef(p string, args ...interface{}) {
 	log := fmt.Sprintf(p, args...)
 	log = fmt.Sprintf("[%v] %v", time.Now().String(), log)
-	fmt.Println(log)
+	// fmt.Println(log)
 	l.lines = append(l.lines, log)
 	l.all = append(l.all, log)
 }
