@@ -88,7 +88,7 @@ func (t *testcase) assertLog(expectLog string) (err error) {
 	go func() {
 		for {
 			for _, line := range t.logger.lines {
-				if expectLog == line {
+				if strings.HasSuffix(line, expectLog) {
 					pass <- true
 					return
 				}
@@ -126,7 +126,7 @@ func (t *testcase) sleep(secs int) (err error) {
 
 func (t *testcase) assertNoLog(log string) (err error) {
 	for _, line := range t.logger.lines {
-		if log == line {
+		if strings.HasSuffix(line, log) {
 			return fmt.Errorf("Found unexpacted log : %v", log)
 		}
 	}

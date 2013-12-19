@@ -5,8 +5,9 @@ import (
 )
 
 type tick struct {
-	callback func()
-	quitChan chan bool
+	callback   func()
+	quitChan   chan bool
+	expireTime time.Time
 }
 
 func newTick(callback func()) *tick {
@@ -17,12 +18,12 @@ func newTick(callback func()) *tick {
 }
 
 func (t *tick) start(ms int) *tick {
+	t.expireTime = time.Now().Add(time.Duration(ms) * time.Millisecond)
 	go func() {
-		time.Sleep(time.Duration(ms) * time.Millisecond)
 		select {
 		case <-t.quitChan:
 			return
-		default:
+		case <-time.After(time.Duration(ms) * time.Millisecond):
 			t.callback()
 		}
 	}()

@@ -1,0 +1,15 @@
+lease owner should extend its lease if has enough time margin
+---
+
+create 3 nodes
+node 1 propose
+assert log "node 1 become lease owner"
+clear logs
+sleep 10
+assert log "node 1 extend its lease"
+assert log "node 1 become lease owner"
+assert no log "node 1 preparing is timeout, restart prepraing"
+assert no log "node 1 proposing is expired, restart prepraing"
+
+finally:
+stop all nodes

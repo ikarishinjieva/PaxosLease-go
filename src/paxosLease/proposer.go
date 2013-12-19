@@ -4,24 +4,29 @@ import (
 	"math"
 	"regexp"
 	"strconv"
+	"time"
 )
 
 type proposer struct {
-	restartCounter   int
-	proposeId        uint64
-	nodeIp           string
-	writer           Writer
-	totalNodeCount   int
-	minMajority      int
-	openNodeCount    int
-	accpetNodeCount  int
-	timeout          int
-	isLeaseOwner     bool
-	logger           Logger
-	preparing        bool
-	proposing        bool
-	preparingTimeout *tick
-	proposingTimeout *tick
+	restartCounter       int
+	proposeId            uint64
+	leaseProposeId       uint64 /*for extend lease*/
+	nodeIp               string
+	writer               Writer
+	totalNodeCount       int
+	minMajority          int
+	openNodeCount        int
+	accpetNodeCount      int
+	timeout              int
+	isLeaseOwner         bool
+	logger               Logger
+	preparing            bool
+	proposing            bool
+	preparingTimeout     *tick
+	proposingTimeout     *tick
+	extendLeaseTimeout   *tick
+	prepareResponseMutex chan bool
+	proposeResponseMutex chan bool
 }
 
 func newProposer(nodeIp string, writer Writer, totalNodeCount int, logger Logger) *proposer {
@@ -34,6 +39,10 @@ func newProposer(nodeIp string, writer Writer, totalNodeCount int, logger Logger
 			uint64(ret.getNodeId())
 	ret.writer = writer
 	ret.minMajority = int(math.Ceil(float64((totalNodeCount + 1) / 2)))
+	ret.prepareResponseMutex = make(chan bool, 1)
+	ret.prepareResponseMutex <- true
+	ret.proposeResponseMutex = make(chan bool, 1)
+	ret.proposeResponseMutex <- true
 	if nil != logger {
 		ret.logger = logger
 	} else {
@@ -50,19 +59,34 @@ func (p *proposer) getNodeId() int {
 
 func (p *proposer) startPreparing() {
 	p.logger.Tracef("node %v: start preparing", p.nodeIp)
-	p.preparingTimeout = newTick(p.onPreparingTimeout).start(PREPARING_TIMEOUT)
+	p.stopTicks()
 	p.preparing = true
 	p.proposing = false
-	p.openNodeCount = 0
-	p.accpetNodeCount = 0
 	p.isLeaseOwner = false
+	p.preparingTimeout = newTick(p.onPreparingTimeout).start(PREPARING_TIMEOUT)
 	p.proposeId = p.nextProposeId(p.proposeId)
 
 	p.broadcastPrepareRequest()
 }
 
+func (p *proposer) stopTicks() {
+	if nil != p.preparingTimeout {
+		p.preparingTimeout.stop()
+		p.preparingTimeout = nil
+	}
+	if nil != p.proposingTimeout {
+		p.proposingTimeout.stop()
+		p.proposingTimeout = nil
+	}
+	if nil != p.extendLeaseTimeout {
+		p.extendLeaseTimeout.stop()
+		p.extendLeaseTimeout = nil
+	}
+}
+
 func (p *proposer) broadcastPrepareRequest() {
 	p.logger.Tracef("node %v: broadcast PrepareRequest : proposeId=%v", p.nodeIp, p.proposeId)
+	p.openNodeCount = 0
 	request := newMessage("PrepareRequest", p.nodeIp)
 	request.ProposeId = p.proposeId
 	p.writer.BroadcastPaxosMsg(request)
@@ -78,23 +102,24 @@ func (p *proposer) nextProposeId(currentId uint64) uint64 {
 }
 
 func (p *proposer) OnPrepareResponse(msg Message) {
+	<-p.prepareResponseMutex
+	defer func() { p.prepareResponseMutex <- true }()
+
 	p.logger.Tracef("node %v: got PrepareResponse from %v : proposeId=%v, acceptedProposeId=%v", p.nodeIp, msg.SourceIp, msg.ProposeId, msg.AcceptedProposeId)
 
-	/*
-		(!p.preparing) is to prevent more node to enter preparing stage than necessary
-		HERE, don't use (!p.preparing) to let more node preparing,
-		in case that some node is down in preparing stage, which may make voting delay
-	*/
-	if p.proposeId != msg.ProposeId /*|| !p.preparing*/ {
+	if p.proposeId != msg.ProposeId || !p.preparing {
 		p.logger.Tracef("node %v: ignore the PrepareResponse", p.nodeIp)
 		return
 	}
-	if 0 == msg.AcceptedProposeId {
+	if 0 == msg.AcceptedProposeId || p.leaseProposeId == msg.AcceptedProposeId {
 		p.openNodeCount++
 	}
 	if p.openNodeCount < p.minMajority {
 		return
 	}
+
+	p.preparing = false
+	p.proposing = true
 
 	p.startProposing()
 }
@@ -102,8 +127,6 @@ func (p *proposer) OnPrepareResponse(msg Message) {
 func (p *proposer) startProposing() {
 	p.logger.Tracef("node %v: got majority positive PrepareResponse", p.nodeIp)
 	p.preparingTimeout.stop()
-	p.preparing = false
-	p.proposing = true
 	p.timeout = MAX_LEASED_TIME
 	p.proposingTimeout = newTick(p.onProposingTimeout).start(p.timeout)
 
@@ -111,7 +134,8 @@ func (p *proposer) startProposing() {
 }
 
 func (p *proposer) broadcastProposeRequest() {
-	p.logger.Tracef("node %v: send ProposeRequest : proposeId=%v,ProposeTimeout=%v", p.nodeIp, p.proposeId, p.timeout)
+	p.logger.Tracef("node %v: broadcast ProposeRequest : proposeId=%v,ProposeTimeout=%v", p.nodeIp, p.proposeId, p.timeout)
+	p.accpetNodeCount = 0
 	ret := newMessage("ProposeRequest", p.nodeIp)
 	ret.ProposeId = p.proposeId
 	ret.ProposeTimeout = p.timeout
@@ -119,7 +143,10 @@ func (p *proposer) broadcastProposeRequest() {
 }
 
 func (p *proposer) OnProposeResponse(msg Message) {
-	p.logger.Tracef("node %v: got ProposeResponse from %v: proposeId=%v, acceptedProposeId=%v", p.nodeIp, msg.SourceIp, msg.ProposeId, msg.AcceptedProposeId)
+	<-p.proposeResponseMutex
+	defer func() { p.proposeResponseMutex <- true }()
+
+	p.logger.Tracef("node %v: got ProposeResponse from %v: proposeId=%v", p.nodeIp, msg.SourceIp, msg.ProposeId)
 	if p.proposeId != msg.ProposeId || !p.proposing {
 		p.logger.Tracef("node %v: ignore the ProposeResponse", p.nodeIp)
 		return
@@ -128,23 +155,38 @@ func (p *proposer) OnProposeResponse(msg Message) {
 	if p.accpetNodeCount < p.minMajority {
 		return
 	}
+	p.preparing = false
+	p.proposing = false
+
 	p.becomeLeaseOwner()
 }
 
 func (p *proposer) becomeLeaseOwner() {
+	p.leaseProposeId = p.proposeId
 	p.isLeaseOwner = true
-	p.preparing = false
-	p.proposing = false
+	proposeLeftTime := int(p.proposingTimeout.expireTime.Sub(time.Now()).Seconds())
+
+	if proposeLeftTime >= 3 {
+		delayMs := (proposeLeftTime - 3) * 1000
+		p.extendLeaseTimeout = newTick(p.onExtendLeaseTimeout).start(delayMs)
+	}
 	p.logger.Tracef("node %v become lease owner", p.nodeIp)
 }
 
 func (p *proposer) onPreparingTimeout() {
 	p.logger.Tracef("node %v preparing is timeout, restart prepraing", p.nodeIp)
+	p.leaseProposeId = 0
 	p.startPreparing()
 }
 
 func (p *proposer) onProposingTimeout() {
 	p.logger.Tracef("node %v proposing is expired, restart prepraing", p.nodeIp)
+	p.leaseProposeId = 0
+	p.startPreparing()
+}
+
+func (p *proposer) onExtendLeaseTimeout() {
+	p.logger.Tracef("node %v extend its lease", p.nodeIp)
 	p.startPreparing()
 }
 
