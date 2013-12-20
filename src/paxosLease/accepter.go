@@ -8,7 +8,7 @@ type accepter struct {
 	writer                   Writer
 	logger                   Logger
 	nodeIp                   string
-	proposingTimeout         *tick
+	proposingTick            *tick
 }
 
 func newAccepter(nodeIp string, writer Writer, logger Logger) *accepter {
@@ -58,7 +58,8 @@ func (a *accepter) OnProposeRequest(msg Message) {
 	a.acceptedProposeId = msg.ProposeId
 	a.acceptedProposeId2 = msg.ProposeId
 	a.acceptedProposeTimeout = msg.ProposeTimeout
-	a.proposingTimeout = newTick(a.onTimeout).start(a.acceptedProposeTimeout)
+	a.stopProposingTick()
+	a.proposingTick = newTick(a.onTimeout).start(a.acceptedProposeTimeout)
 
 	a.sendProposeResponse(msg.SourceIp, msg.ProposeId)
 	return
@@ -76,8 +77,13 @@ func (a *accepter) onTimeout() {
 }
 
 func (a *accepter) Stop() {
-	if nil != a.proposingTimeout {
-		a.proposingTimeout.stop()
+	a.stopProposingTick()
+}
+
+func (a *accepter) stopProposingTick() {
+	if nil != a.proposingTick {
+		a.proposingTick.stop()
+		a.proposingTick = nil
 	}
 }
 

@@ -24,8 +24,10 @@ type proposer struct {
 	proposingTick        *tick
 	leaseTick            *tick
 	extendLeaseTick      *tick
+	giveupLeaseTick      *tick
 	prepareResponseMutex chan bool
 	proposeResponseMutex chan bool
+	giveupLeaseMutex     chan bool
 }
 
 func newProposer(nodeIp string, writer Writer, totalNodeCount int, logger Logger) *proposer {
@@ -43,6 +45,8 @@ func newProposer(nodeIp string, writer Writer, totalNodeCount int, logger Logger
 	ret.prepareResponseMutex <- true
 	ret.proposeResponseMutex = make(chan bool, 1)
 	ret.proposeResponseMutex <- true
+	ret.giveupLeaseMutex = make(chan bool, 1)
+	ret.giveupLeaseMutex <- true
 	if nil != logger {
 		ret.logger = logger
 	} else {
@@ -59,6 +63,10 @@ func (p *proposer) getNodeId() int {
 
 func (p *proposer) startPreparing(isExtendLease bool) {
 	p.logger.Tracef("node %v: start preparing", p.nodeIp)
+	if nil != p.giveupLeaseTick {
+		p.logger.Tracef("node %v: ignore preparing, since it's giving up lease", p.nodeIp)
+		return
+	}
 	p.stopTicks()
 	p.preparingTick = newTick(p.onPreparingTimeout).start(PREPARING_TIMEOUT)
 	p.proposeId = p.nextProposeId(p.proposeId, isExtendLease)
@@ -208,6 +216,13 @@ func (p *proposer) stopExtendLeaseTick() {
 	}
 }
 
+func (p *proposer) stopGiveupLeaseTick() {
+	if nil != p.extendLeaseTick {
+		p.extendLeaseTick.stop()
+		p.extendLeaseTick = nil
+	}
+}
+
 func (p *proposer) stopTicks() {
 	p.stopPreparingTick()
 	p.stopProposingTick()
@@ -243,4 +258,29 @@ func (p *proposer) broadcastProposeRequest() {
 	ret.ProposeId = p.proposeId
 	ret.ProposeTimeout = p.leaseTime
 	p.writer.BroadcastPaxosMsg(p.nodeIp, ret)
+}
+
+func (p *proposer) GiveupLease() {
+	<-p.giveupLeaseMutex
+	defer func() { p.giveupLeaseMutex <- true }()
+	if !p.IsLeaseOwner() {
+		return
+	}
+	if nil != p.giveupLeaseTick {
+		return
+	}
+	p.logger.Tracef("node %v request give up its lease", p.nodeIp)
+	p.giveupLeaseTick = newTick(p.onGiveupLeaseTimeout).start(MAX_LEASED_TIME * 2)
+	p.stopPreparingTick()
+	p.stopExtendLeaseTick()
+	//keep Proposing & Lease tick
+}
+
+func (p *proposer) onGiveupLeaseTimeout() {
+	<-p.giveupLeaseMutex
+	defer func() { p.giveupLeaseMutex <- true }()
+	p.logger.Tracef("node %v give up its lease", p.nodeIp)
+	p.giveupLeaseTick = nil
+	p.leaseProposeId = 0
+	p.startPreparing(false)
 }

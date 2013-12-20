@@ -11,9 +11,15 @@ node 1 propose
 sleep 1
 node 2 propose
 assert log "node 1 become lease owner"
+
 clear logs
 assert log "node 1 extend its lease"
 assert log "node 1 become lease owner"
+
+clear logs
+sleep 10
+assert no log "node 2 become lease owner"
+
 
 finally:
 stop all nodes

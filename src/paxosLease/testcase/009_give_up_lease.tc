@@ -1,0 +1,22 @@
+lease owner could give up lease
+---
+
+create 3 nodes
+
+node 1 propose
+sleep 1
+node 2 propose
+
+
+assert log "node 1 become lease owner"
+
+node 1 give up lease
+
+sleep 10
+
+assert log "node 2 become lease owner"
+
+clear logs
+
+finally:
+stop all nodes

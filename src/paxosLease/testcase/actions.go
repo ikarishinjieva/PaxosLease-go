@@ -70,6 +70,10 @@ func (t *testcase) doAction(desc string) (err error) {
 	err = t.descToAction(desc, "network resume", err, func(matches []string) error {
 		return t.networkResume()
 	})
+	err = t.descToAction(desc, "node (\\d) give up lease", err, func(matches []string) error {
+		id, _ := strconv.Atoi(matches[1])
+		return t.giveUpLease(id)
+	})
 	return err
 }
 
@@ -194,5 +198,11 @@ func (t *testcase) networkResume() (err error) {
 		debug.UnsetCond(cond)
 	}
 	debug.UnsetCond("network brain-split")
+	return nil
+}
+
+func (t *testcase) giveUpLease(id int) (err error) {
+	node := t.nodes[strconv.Itoa(id)]
+	go node.Proposer.GiveupLease()
 	return nil
 }
