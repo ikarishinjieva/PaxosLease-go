@@ -2,6 +2,7 @@ package debug
 
 import (
 	"fmt"
+	"regexp"
 	"time"
 )
 
@@ -22,6 +23,16 @@ func HasCond(expects ...string) bool {
 		}
 	}
 	return false
+}
+
+func ListConds(pattern string) []string {
+	ret := make([]string, 0)
+	for cond, _ := range conds {
+		if a, _ := regexp.MatchString(pattern, cond); a {
+			ret = append(ret, cond)
+		}
+	}
+	return ret
 }
 
 func If(cond string, fns ...func(string)) {

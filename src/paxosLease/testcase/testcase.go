@@ -51,10 +51,11 @@ func (t *testcase) Start() (err error) {
 		}
 		if or {
 			if strings.HasPrefix(line, "\t") {
+				line = strings.TrimPrefix(line, "\t")
 				orChan := make(chan error, 0)
-				go func() {
+				go func(line string) {
 					orChan <- t.doAction(line)
-				}()
+				}(line)
 				ors = append(ors, orChan)
 				continue
 			} else {

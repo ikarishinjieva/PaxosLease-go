@@ -37,7 +37,8 @@ func newProposer(nodeIp string, writer Writer, totalNodeCount int, logger Logger
 			uint64(ret.restartCounter<<PROPOSE_ID_WIDTH_NODEID) |
 			uint64(ret.getNodeId())
 	ret.writer = writer
-	ret.minMajority = int(math.Ceil(float64((totalNodeCount + 1) / 2)))
+	ret.minMajority = int(math.Ceil((float64(totalNodeCount) + 1) / float64(2)))
+	logger.Tracef("node %v minMajority=%v", nodeIp, ret.minMajority)
 	ret.prepareResponseMutex = make(chan bool, 1)
 	ret.prepareResponseMutex <- true
 	ret.proposeResponseMutex = make(chan bool, 1)

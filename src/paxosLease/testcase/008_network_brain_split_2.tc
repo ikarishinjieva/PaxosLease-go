@@ -1,0 +1,32 @@
+network brain-split by half
+	no subnet will have master
+	one should be master if the network resume
+---
+
+create 4 nodes
+node 1 propose
+sleep 1
+node 3 propose
+
+assert log "node 1 become lease owner"
+
+network brain-split [1,2] [3,4]
+
+clear logs
+
+#wait lease expire
+sleep 10
+
+assert log "node 1 preparing is timeout, restart prepraing"
+
+assert no log "node 3 become lease owner"
+assert no log "node 1 become lease owner"
+
+network resume
+
+OR:
+	assert log "node 1 become lease owner"
+	assert log "node 3 become lease owner"
+
+finally:
+stop all nodes

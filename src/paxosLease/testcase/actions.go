@@ -67,6 +67,9 @@ func (t *testcase) doAction(desc string) (err error) {
 	err = t.descToAction(desc, "network brain-split \\[([^\\]]+)\\] \\[([^\\]]+)\\]", err, func(matches []string) error {
 		return t.networkBrainSplit([]string{matches[1], matches[2]})
 	})
+	err = t.descToAction(desc, "network resume", err, func(matches []string) error {
+		return t.networkResume()
+	})
 	return err
 }
 
@@ -178,10 +181,18 @@ func (t *testcase) networkBrainSplit(groups []string) (err error) {
 		for _, a := range nodes {
 			for _, b := range nodes {
 				if a != b {
-					debug.SetCond(fmt.Sprintf("node %v can send msg to node %v", a, b))
+					debug.SetCond(fmt.Sprintf("network brain-split: node %v can send msg to node %v", a, b))
 				}
 			}
 		}
 	}
+	return nil
+}
+
+func (t *testcase) networkResume() (err error) {
+	for _, cond := range debug.ListConds("network brain-split:.*") {
+		debug.UnsetCond(cond)
+	}
+	debug.UnsetCond("network brain-split")
 	return nil
 }

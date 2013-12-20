@@ -42,7 +42,7 @@ func (m *mockWriter) send(fromIp string, node *paxosLease.Node, msg paxosLease.M
 		return nil
 	}
 	if debug.HasCond("network brain-split") && fromIp != node.Ip &&
-		!debug.HasCond(fmt.Sprintf("node %v can send msg to node %v", fromIp, node.Ip)) {
+		!debug.HasCond(fmt.Sprintf("network brain-split: node %v can send msg to node %v", fromIp, node.Ip)) {
 		return nil
 	}
 	switch msg.MsgType {

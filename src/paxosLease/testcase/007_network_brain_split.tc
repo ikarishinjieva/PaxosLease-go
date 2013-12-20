@@ -19,3 +19,6 @@ sleep 10
 
 assert log "node 3 become lease owner"
 assert no log "node 1 become lease owner"
+
+finally:
+stop all nodes
