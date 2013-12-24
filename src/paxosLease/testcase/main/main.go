@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"paxosLease/debug"
 	"paxosLease/testcase"
 	"runtime"
 	"strings"
@@ -23,6 +24,8 @@ func main() {
 
 func runTestcase(path string) {
 	fmt.Println("Running ", path)
+	debug.ResetConds()
+	debug.SetCond("in INT test")
 	tc := testcase.NewTestcase(path)
 	if err := tc.Start(); nil != err {
 		fmt.Println("case failed :\n", err)

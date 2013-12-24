@@ -15,7 +15,6 @@ type proposer struct {
 	leaseProposeId       uint64 /* (leaseProposeId == 0) as isLeaseOwner */
 	nodeIp               string
 	writer               Writer
-	minMajority          int
 	openNodeCount        int
 	accpetNodeCount      int
 	leaseTime            int
@@ -30,7 +29,7 @@ type proposer struct {
 	giveupLeaseMutex     chan bool
 }
 
-func newProposer(nodeIp string, writer Writer, totalNodeCount int, logger Logger) *proposer {
+func newProposer(nodeIp string, writer Writer, logger Logger) *proposer {
 	ret := proposer{}
 	ret.nodeIp = nodeIp
 	ret.restartCounter = 0 //TODO init
@@ -39,8 +38,6 @@ func newProposer(nodeIp string, writer Writer, totalNodeCount int, logger Logger
 			uint64(ret.restartCounter<<PROPOSE_ID_WIDTH_NODEID) |
 			uint64(ret.getNodeId())
 	ret.writer = writer
-	ret.minMajority = int(math.Ceil((float64(totalNodeCount) + 1) / float64(2)))
-	logger.Tracef("node %v minMajority=%v", nodeIp, ret.minMajority)
 	ret.prepareResponseMutex = make(chan bool, 1)
 	ret.prepareResponseMutex <- true
 	ret.proposeResponseMutex = make(chan bool, 1)
@@ -55,10 +52,17 @@ func newProposer(nodeIp string, writer Writer, totalNodeCount int, logger Logger
 	return &ret
 }
 
+func (p *proposer) GetMinMajority() int {
+	return int(math.Ceil((float64(p.writer.GetNodeTotalCount()) + 1) / float64(2)))
+}
+
 func (p *proposer) getNodeId() int {
-	//TODO
-	ret, _ := strconv.Atoi(regexp.MustCompile("\\d$").FindString(p.nodeIp))
-	return ret
+	match := regexp.MustCompile("^(\\d+)\\.(\\d+)\\.(\\d+)\\.(\\d+)").FindStringSubmatch(p.nodeIp)
+	seg4, _ := strconv.Atoi(match[4])
+	seg3, _ := strconv.Atoi(match[3])
+	port, _ := strconv.Atoi(regexp.MustCompile("\\d+$").FindString(p.nodeIp))
+	id := (seg3+seg4)*10000 + port
+	return id
 }
 
 func (p *proposer) startPreparing(isExtendLease bool) {
@@ -87,7 +91,7 @@ func (p *proposer) OnPrepareResponse(msg Message) {
 	if 0 == msg.AcceptedProposeId || p.leaseProposeId == msg.AcceptedProposeId {
 		p.openNodeCount++
 	}
-	if p.openNodeCount < p.minMajority {
+	if p.openNodeCount < p.GetMinMajority() {
 		return
 	}
 
@@ -131,7 +135,7 @@ func (p *proposer) OnProposeResponse(msg Message) {
 		return
 	}
 	p.accpetNodeCount++
-	if p.accpetNodeCount < p.minMajority {
+	if p.accpetNodeCount < p.GetMinMajority() {
 		return
 	}
 
@@ -283,4 +287,8 @@ func (p *proposer) onGiveupLeaseTimeout() {
 	p.giveupLeaseTick = nil
 	p.leaseProposeId = 0
 	p.startPreparing(false)
+}
+
+func (p *proposer) GetLeaseProposeId() uint64 {
+	return p.leaseProposeId
 }

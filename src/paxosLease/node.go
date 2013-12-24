@@ -6,10 +6,10 @@ type Node struct {
 	Ip       string
 }
 
-func NewNode(nodeIp string, writer Writer, totalNodeCount int, logger Logger) *Node {
+func NewNode(nodeIp string, writer Writer, logger Logger) *Node {
 	ret := Node{}
 	ret.Accepter = newAccepter(nodeIp, writer, logger)
-	ret.Proposer = newProposer(nodeIp, writer, totalNodeCount, logger)
+	ret.Proposer = newProposer(nodeIp, writer, logger)
 	ret.Ip = nodeIp
 	return &ret
 }
@@ -17,4 +17,27 @@ func NewNode(nodeIp string, writer Writer, totalNodeCount int, logger Logger) *N
 func (n *Node) Stop() {
 	n.Accepter.Stop()
 	n.Proposer.Stop()
+}
+
+func (n *Node) Start() {
+	n.Proposer.Start()
+}
+
+func (node *Node) ProcessMsg(msg Message) {
+	switch msg.MsgType {
+	case "PrepareRequest":
+		go node.Accepter.OnPrepareRequest(msg)
+	case "ProposeRequest":
+		go node.Accepter.OnProposeRequest(msg)
+	case "PrepareResponse":
+		go node.Proposer.OnPrepareResponse(msg)
+	case "ProposeResponse":
+		go node.Proposer.OnProposeResponse(msg)
+	case "PrepareReject":
+		go node.Proposer.OnPrepareReject(msg)
+	}
+}
+
+func (n *Node) GetPaxosId() uint64 {
+	return n.Proposer.GetLeaseProposeId()
 }

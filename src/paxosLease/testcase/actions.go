@@ -79,8 +79,7 @@ func (t *testcase) doAction(desc string) (err error) {
 
 func (t *testcase) createNodes(count int) (err error) {
 	for i := 1; i <= count; i++ {
-		node := paxosLease.NewNode(strconv.Itoa(i), t.writer, count, t.logger)
-		t.nodes[strconv.Itoa(i)] = node
+		t.nodes[strconv.Itoa(i)] = paxosLease.NewNode(strconv.Itoa(i), t.writer, t.logger)
 	}
 	t.writer.nodes = t.nodes
 	return nil

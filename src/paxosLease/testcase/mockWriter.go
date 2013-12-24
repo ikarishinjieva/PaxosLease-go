@@ -37,6 +37,10 @@ func (m *mockWriter) BroadcastPaxosMsg(fromIp string, data interface{}) error {
 	}
 }
 
+func (m *mockWriter) GetNodeTotalCount() int {
+	return len(m.nodes)
+}
+
 func (m *mockWriter) send(fromIp string, node *paxosLease.Node, msg paxosLease.Message) error {
 	if debug.HasCond(fmt.Sprintf("node %v is offline", node.Ip)) {
 		return nil
@@ -45,17 +49,6 @@ func (m *mockWriter) send(fromIp string, node *paxosLease.Node, msg paxosLease.M
 		!debug.HasCond(fmt.Sprintf("network brain-split: node %v can send msg to node %v", fromIp, node.Ip)) {
 		return nil
 	}
-	switch msg.MsgType {
-	case "PrepareRequest":
-		go node.Accepter.OnPrepareRequest(msg)
-	case "ProposeRequest":
-		go node.Accepter.OnProposeRequest(msg)
-	case "PrepareResponse":
-		go node.Proposer.OnPrepareResponse(msg)
-	case "ProposeResponse":
-		go node.Proposer.OnProposeResponse(msg)
-	case "PrepareReject":
-		go node.Proposer.OnPrepareReject(msg)
-	}
+	node.ProcessMsg(msg)
 	return nil
 }
