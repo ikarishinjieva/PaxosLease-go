@@ -3,6 +3,7 @@ package paxosLease
 import (
 	"fmt"
 	"math"
+	"math/rand"
 	"paxosLease/debug"
 	"regexp"
 	"strconv"
@@ -163,12 +164,14 @@ func (p *proposer) becomeLeaseOwner() {
 func (p *proposer) onPreparingTimeout() {
 	p.logger.Tracef("node %v preparing is timeout, restart prepraing", p.nodeIp)
 	p.leaseProposeId = 0
+	time.Sleep(time.Duration(rand.Intn(2000)) * time.Millisecond) //solve dynamic dead-lock
 	p.startPreparing(false)
 }
 
 func (p *proposer) onProposingTimeout() {
 	p.logger.Tracef("node %v proposing is expired, restart prepraing", p.nodeIp)
 	p.leaseProposeId = 0
+	time.Sleep(time.Duration(rand.Intn(2000)) * time.Millisecond) //solve dynamic dead-lock
 	p.startPreparing(false)
 }
 
