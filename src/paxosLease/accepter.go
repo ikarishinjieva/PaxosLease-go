@@ -38,7 +38,7 @@ func (a *accepter) sendPrepareReject(ip string, proposeId uint64) {
 	ret := newMessage("PrepareReject", a.nodeIp)
 	ret.ProposeId = proposeId
 	ret.AcceptedProposeId = a.acceptedProposeId2 //use acceptedProposeId2 because acceptedProposedId will be cleared after lease expired
-	a.logger.Tracef("node %v: send PrepareReject : proposeId=%v, acceptedProposeId=%v", a.nodeIp, ret.ProposeId, ret.AcceptedProposeId)
+	a.logger.Tracef("node %v: send PrepareReject : proposeId=%v, acceptedProposeId=%v, highestPromisedId=%v", a.nodeIp, ret.ProposeId, ret.AcceptedProposeId, a.highestPromisedProposeId)
 	a.writer.SendPaxosMsg(a.nodeIp, ip, ret)
 }
 

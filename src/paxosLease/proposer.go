@@ -28,6 +28,7 @@ type proposer struct {
 	prepareResponseMutex chan bool
 	proposeResponseMutex chan bool
 	giveupLeaseMutex     chan bool
+	stopped              bool
 }
 
 func newProposer(nodeIp string, writer Writer, logger Logger) *proposer {
@@ -67,6 +68,9 @@ func (p *proposer) getNodeId() int {
 }
 
 func (p *proposer) startPreparing(isExtendLease bool) {
+	if p.stopped {
+		return
+	}
 	p.logger.Tracef("node %v: start preparing", p.nodeIp)
 	if nil != p.giveupLeaseTick {
 		p.logger.Tracef("node %v: ignore preparing, since it's giving up lease", p.nodeIp)
@@ -192,6 +196,7 @@ func (p *proposer) Start() {
 }
 
 func (p *proposer) Stop() {
+	p.stopped = true
 	p.stopTicks()
 }
 
