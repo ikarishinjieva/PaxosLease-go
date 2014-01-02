@@ -29,16 +29,29 @@ type proposer struct {
 	proposeResponseMutex chan bool
 	giveupLeaseMutex     chan bool
 	stopped              bool
+	proposeIdPersister   PaxosIdPersister
 }
 
-func newProposer(nodeIp string, writer Writer, logger Logger) *proposer {
+func newProposer(nodeIp string, writer Writer, logger Logger, proposeIdPersister PaxosIdPersister) *proposer {
 	ret := proposer{}
 	ret.nodeIp = nodeIp
 	ret.restartCounter = 0 //TODO init
-	ret.proposeId =
-		uint64(0<<(PROPOSE_ID_WIDTH_NODEID+PROPOSE_ID_WIDTH_RESTART_COUNTER)) |
-			uint64(ret.restartCounter<<PROPOSE_ID_WIDTH_NODEID) |
-			uint64(ret.getNodeId())
+	if nil != logger {
+		ret.logger = logger
+	} else {
+		ret.logger = &blackholeLogger{}
+	}
+	ret.proposeIdPersister = proposeIdPersister
+	if id, err := proposeIdPersister.Get(); nil == err {
+		ret.logger.Tracef("Proposer read persist propose id %v", id)
+		ret.proposeId = id
+	} else {
+		ret.logger.Tracef("Proposer fail to read persist propose id, err is %v", err)
+		ret.proposeId =
+			uint64(0<<(PROPOSE_ID_WIDTH_NODEID+PROPOSE_ID_WIDTH_RESTART_COUNTER)) |
+				uint64(ret.restartCounter<<PROPOSE_ID_WIDTH_NODEID) |
+				uint64(ret.getNodeId())
+	}
 	ret.writer = writer
 	ret.prepareResponseMutex = make(chan bool, 1)
 	ret.prepareResponseMutex <- true
@@ -46,11 +59,6 @@ func newProposer(nodeIp string, writer Writer, logger Logger) *proposer {
 	ret.proposeResponseMutex <- true
 	ret.giveupLeaseMutex = make(chan bool, 1)
 	ret.giveupLeaseMutex <- true
-	if nil != logger {
-		ret.logger = logger
-	} else {
-		ret.logger = &blackholeLogger{}
-	}
 	return &ret
 }
 

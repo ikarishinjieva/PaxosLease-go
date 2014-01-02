@@ -6,10 +6,10 @@ type Node struct {
 	Ip       string
 }
 
-func NewNode(nodeIp string, writer Writer, logger Logger) *Node {
+func NewNode(nodeIp string, writer Writer, logger Logger, paxosIdPersister PaxosIdPersister) *Node {
 	ret := Node{}
 	ret.Accepter = newAccepter(nodeIp, writer, logger)
-	ret.Proposer = newProposer(nodeIp, writer, logger)
+	ret.Proposer = newProposer(nodeIp, writer, logger, paxosIdPersister)
 	ret.Ip = nodeIp
 	return &ret
 }
