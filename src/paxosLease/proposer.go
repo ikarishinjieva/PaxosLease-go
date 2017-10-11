@@ -68,6 +68,10 @@ func (p *proposer) GetMinMajority() int {
 
 func (p *proposer) getNodeId() int {
 	match := regexp.MustCompile("^(\\d+)\\.(\\d+)\\.(\\d+)\\.(\\d+)").FindStringSubmatch(p.nodeIp)
+	if 0 == len(match) { //for unit test
+		id, _ := strconv.Atoi(p.nodeIp)
+		return id
+	}
 	seg4, _ := strconv.Atoi(match[4])
 	seg3, _ := strconv.Atoi(match[3])
 	port, _ := strconv.Atoi(regexp.MustCompile("\\d+$").FindString(p.nodeIp))
